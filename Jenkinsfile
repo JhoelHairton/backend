@@ -21,9 +21,8 @@ pipeline {
                 dir("${PROJECT_DIR}") {
                     // Instalar Composer y extensiones PHP
                     sh '''
-                        apt-get update
-                        apt-get install -y unzip php php-zip php-mysql php-mbstring php-xml curl
-                        curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+                        php -v
+                        composer -V
                         composer install --no-interaction --prefer-dist
                         cp .env.example .env
                         php artisan key:generate
