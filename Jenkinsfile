@@ -21,8 +21,8 @@ pipeline {
                 dir("${PROJECT_DIR}") {
                     // Instalar Composer y extensiones PHP
                     sh '''
-                        sudo apt-get update
-                        sudo apt-get install -y unzip php php-zip php-mysql php-mbstring php-xml curl
+                        apt-get update
+                        apt-get install -y unzip php php-zip php-mysql php-mbstring php-xml curl
                         curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
                         composer install --no-interaction --prefer-dist
                         cp .env.example .env
@@ -68,13 +68,12 @@ pipeline {
     }
 
     post {
-        failure {
-            slackSend channel: '#devops',
-                     message: "❌ Pipeline Fallido: ${env.JOB_NAME} (${env.BUILD_URL})"
-        }
-        success {
-            slackSend channel: '#devops',
-                     message: "✅ Pipeline Exitoso: ${env.JOB_NAME} (${env.BUILD_URL})"
-        }
+    failure {
+        echo "❌ Pipeline Fallido: ${env.JOB_NAME} (${env.BUILD_URL})"
     }
+    success {
+        echo "✅ Pipeline Exitoso: ${env.JOB_NAME} (${env.BUILD_URL})"
+    }
+}
+
 }
