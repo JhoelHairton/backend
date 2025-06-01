@@ -1,10 +1,5 @@
 pipeline {
-    agent {
-        docker {
-            image 'php:8.2-cli'  // Imagen oficial con PHP 8.2
-            args '-v /var/run/docker.sock:/var/run/docker.sock'
-        }
-    }
+    agent any
 
     environment {
         SONARQUBE_ENV = 'sonarqube'
@@ -26,11 +21,11 @@ pipeline {
                 dir("${PROJECT_DIR}") {
                     // Instalar Composer y extensiones PHP
                     sh '''
-                        apt-get update && apt-get install -y unzip libzip-dev
+                        sudo apt-get update
+                        sudo apt-get install -y unzip php php-zip php-mysql php-mbstring php-xml curl
                         curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-                        docker-php-ext-install zip pdo_mysql
                         composer install --no-interaction --prefer-dist
-                        cp .env.ci .env
+                        cp .env.example .env
                         php artisan key:generate
                     '''
                 }
