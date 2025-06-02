@@ -1,0 +1,88 @@
+pipeline {
+    agent any
+
+    environment {
+        SONARQUBE_ENV = 'sonarqube'
+        DB_HOST       = 'mysql'
+        DB_PORT       = '3306'
+    }
+
+    stages {
+        stage('Clonar repositorio') {
+            steps {
+                git branch: 'main',
+                    credentialsId: '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',
+                    url: 'https://github.com/JhoelHairton/turismo-backend-v2.git'
+            }
+        }
+
+        stage('Verificar estructura') {
+            steps {
+                // Mostrar estructura para validar que Jenkins clonó todo en el directorio raíz
+                sh 'ls -R .'
+            }
+        }
+
+        stage('Instalar dependencias') {
+            steps {
+                // Composer y generación de clave de Laravel
+                sh '''
+                  composer install --no-interaction --prefer-dist
+                  cp .env.example .env
+                  php artisan key:generate
+                '''
+            }
+        }
+
+        stage('Preparar base de datos') {
+            steps {
+                sh '''
+                  # Esperar a que MySQL esté listo dentro de la red Docker
+                  echo "⏳ Esperando a que MySQL arranque…" && sleep 15
+                  # Reemplazar el puerto en .env para usar 3306 internamente
+                  sed -i "s/DB_PORT=3307/DB_PORT=3306/g" .env
+                  # Ejecutar migraciones y seeders
+                  php artisan migrate --seed --force
+                '''
+            }
+        }
+
+        stage('Ejecutar pruebas') {
+            steps {
+                sh '''
+                  # Crear carpetas para que PHPUnit guarde los reportes
+                  mkdir -p storage/test-results storage/coverage
+                  # Ejecutar solo pruebas Feature y generar reportes
+                  php artisan test --testsuite=Feature --log-junit storage/test-results.xml --coverage-clover storage/coverage/clover.xml
+                '''
+            }
+            post {
+                always {
+                    // Archivar resultados JUnit
+                    junit 'storage/test-results.xml'
+                }
+            }
+        }
+
+        stage('Análisis SonarQube') {
+            when {
+                branch 'main'
+            }
+            steps {
+                // Ejecutar SonarScanner (ya instalado en la imagen)
+                withSonarQubeEnv("${SONARQUBE_ENV}") {
+                    sh 'sonar-scanner -Dsonar.projectKey=turismo-capachica -Dsonar.php.coverage.reportPaths=storage/coverage/clover.xml'
+                }
+            }
+        }
+    }
+
+    post {
+        failure {
+            echo "❌ Pipeline Fallido: ${env.JOB_NAME} (${env.BUILD_URL})"
+        }
+        success {
+            echo "✅ Pipeline Exitoso: ${env.JOB_NAME} (${env.BUILD_URL})"
+        }
+    }
+}
